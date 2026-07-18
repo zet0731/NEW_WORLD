@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>야간숲 2D - 파티 서바이벌</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 게임 화면 컨테이너 -->
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 글로벌 시스템 공지사항 배너 (Roblox 브레인롯 훔치기 이벤트 비주얼 적용) -->
+    <div id="global-announcement" class="announcement-banner hidden">
+      <div class="announcement-event-tag" id="announcement-tag">EVENT</div>
+      <div class="announcement-content-box-roblox">
+        <span id="announcement-text" class="announcement-text-val-roblox">브레인롯 훔치기</span>
+      </div>
+    </div>
+
+    <!-- 시각 효과 오버레이 (데미지 시 붉은 화면 등) -->
+    <div id="damage-overlay"></div>
+
+    <!-- 밤이 올 때의 스크린 가이드 및 특수 효과 -->
+    <div id="night-warning" class="hidden">밤이 찾아왔습니다... 늑대와 곰을 조심하며 모닥불 근처에 머무세요!</div>
+
+    <!-- HUD (헤드업 디스플레이) -->
+    <div id="hud">
+      <div class="hud-left">
+        <!-- 상태 바 (체력, 목재, 골드) -->
+        <div class="status-panel glass">
+          <div class="status-item">
+            <span class="icon">❤️</span>
+            <div class="bar-container">
+              <div id="hp-bar" class="bar hp" style="width: 100%;"></div>
+            </div>
+            <span id="hp-text" class="status-val">150</span>
+          </div>
+          <div class="status-item">
+            <span class="icon">🪵</span>
+            <span class="label">목재:</span>
+            <span id="wood-val" class="status-val highlight-green">0</span>
+          </div>
+          <div class="status-item">
+            <span class="icon">🪙</span>
+            <span class="label">골드:</span>
+            <span id="gold-val" class="status-val highlight-gold">0</span>
+          </div>
+        </div>
+
+        <!-- 현재 도끼 정보 -->
+        <div class="axe-panel glass">
+          <span class="icon">🪓</span>
+          <div>
+            <div class="small-title">도끼 등급</div>
+            <div id="axe-name" class="value">낡은 돌도끼 (Lv.1)</div>
+          </div>
+        </div>
+
+        <!-- 파티 상태 패널 -->
+        <div id="party-hud" class="party-hud-panel glass hidden">
+          <div class="small-title">👥 파티 상태</div>
+          <div id="party-members-list">
+            <!-- 자바스크립트로 동적 렌더링 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <!-- 시간/날짜 표시 -->
+        <div class="time-panel glass">
+          <div id="time-icon">☀️</div>
+          <div class="time-details">
+            <div id="day-text">Day 1</div>
+            <div id="time-text">08:00 (낮)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <!-- 모닥불 상태 -->
+        <div class="campfire-panel glass">
+          <div class="campfire-header">
+            <span class="icon">🔥</span>
+            <div>
+              <div class="small-title">모닥불 레벨</div>
+              <div id="campfire-level" class="value">Lv.1</div>
+            </div>
+          </div>
+          <div class="campfire-progress">
+            <div class="bar-container">
+              <div id="campfire-bar" class="bar fire" style="width: 0%;"></div>
+            </div>
+            <div class="progress-text"><span id="campfire-wood">0</span> / <span id="campfire-target">15</span></div>
+          </div>
+          <button id="btn-feed-wood" class="btn btn-primary btn-sm">🪵 나무 넣기 (E)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 제작대 UI 모달 (상호작용 시 열림) -->
+    <div id="crafting-modal" class="modal glass hidden">
+      <div class="modal-header">
+        <h2>🛠️ 제작대</h2>
+        <button id="btn-close-crafting" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-content">
+        <div class="craft-category-tabs">
+          <button class="tab-btn active" data-tab="tools">도구 강화</button>
+          <button class="tab-btn" data-tab="survival">생존 아이템</button>
+        </div>
+
+        <!-- 도구 탭 -->
+        <div id="tab-tools" class="tab-pane active">
+          <div class="craft-item card-glass" id="craft-axe-upgrade">
+            <div class="item-icon">🪓</div>
+            <div class="item-details">
+              <h3>도끼 강화 <span id="axe-next-level">(Lv.2)</span></h3>
+              <p>나무 채집 피해량 및 몬스터 공격 피해량이 증가합니다.</p>
+              <div class="cost">필요 목재: <span id="axe-upgrade-cost" class="cost-val">20</span></div>
+            </div>
+            <button id="btn-upgrade-axe" class="btn btn-accent">강화하기</button>
+          </div>
+          <div class="craft-item card-glass" id="craft-boots">
+            <div class="item-icon">👟</div>
+            <div class="item-details">
+              <h3>신속의 장화</h3>
+              <p>플레이어의 이동 속도가 25% 빨라집니다.</p>
+              <div class="cost">필요 목재: <span id="boots-cost" class="cost-val">30</span></div>
+            </div>
+            <button id="btn-craft-boots" class="btn btn-accent">제작하기</button>
+          </div>
+        </div>
+
+        <!-- 생존 탭 -->
+        <div id="tab-survival" class="tab-pane">
+          <div class="craft-item card-glass" id="craft-torch">
+            <div class="item-icon">🕯️</div>
+            <div class="item-details">
+              <h3>휴대용 횃불 (보관함: <span id="torch-inventory">0</span>개)</h3>
+              <p>바닥에 설치하여 밤에도 어두운 영역을 밝히는 광원을 생성합니다. (단축키 2번 또는 터치로 핫바 선택 후 사용)</p>
+              <div class="cost">필요 목재: <span id="torch-cost" class="cost-val">10</span></div>
+            </div>
+            <button id="btn-craft-torch" class="btn btn-accent">제작하기</button>
+          </div>
+          <div class="craft-item card-glass" id="craft-potion">
+            <div class="item-icon">🧪</div>
+            <div class="item-details">
+              <h3>체력 회복 물약 (보관함: <span id="potion-inventory">0</span>개)</h3>
+              <p>인벤토리에 저장해두고 위급할 때 마시는 체력 물약입니다. (단축키 3번 또는 터치로 핫바 선택 후 사용)</p>
+              <div class="cost">필요 목재: <span id="potion-cost" class="cost-val">8</span></div>
+            </div>
+            <button id="btn-craft-potion" class="btn btn-accent">제작하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 요리 제작대 UI 모달 (레시피북 사용 시 열림) -->
+    <div id="cooking-modal" class="modal glass hidden">
+      <div class="modal-header">
+        <h2>📖 요리 레시피북 (조리실)</h2>
+        <button id="btn-close-cooking" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-content">
+        <p class="subtitle">모닥불이나 기지 내 요리 냄비 근처에서 요리를 조리할 수 있습니다.</p>
+        <div class="cooking-inventory-status card-glass">
+          <span>🪵 목재: <span id="cook-wood-val">0</span></span> | 
+          <span>🍄 야생 버섯: <span id="cook-mushroom-val">0</span></span> | 
+          <span>🌶️ 고대 향신료: <span id="cook-spice-val">0</span></span>
+        </div>
+        <div id="cooking-recipe-list" class="recipe-list-vertical">
+          <!-- 레시피 리스트가 JS로 채워집니다 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 안내 메시지 및 튜토리얼 (화면 하단 중앙) -->
+    <div id="instruction-toast" class="toast glass">
+      <span class="toast-text">움직임: WASD/방향키 | 핫바선택: 1~4 | 제작대: F | 모닥불: E | 횃불설치: Q (채팅: Enter)</span>
+    </div>
+
+    <!-- 게임오버 화면 -->
+    <div id="gameover-screen" class="screen-overlay glass hidden">
+      <div class="screen-content">
+        <h1 class="glow-red">사망하였습니다</h1>
+        <p>어둠 속 야생 동물의 습격 혹은 동사로 생존하지 못했습니다.</p>
+        <div class="stats-summary">
+          <div>생존 기간: <span id="summary-days" class="highlight">0</span>일</div>
+          <div>획득 골드: <span id="summary-gold" class="highlight">0</span> G</div>
+          <div>최대 모닥불 레벨: <span id="summary-camp-lvl" class="highlight">1</span></div>
+        </div>
+        <button id="btn-restart" class="btn btn-primary btn-lg">로비로 이동</button>
+      </div>
+    </div>
+
+    <!-- 로그인 및 회원가입 화면 -->
+    <div id="auth-screen" class="screen-overlay">
+      <div class="auth-card glass">
+        <h1 class="glow-blue" id="auth-title">로그인</h1>
+        <p class="subtitle" id="auth-subtitle">야간숲 2D 서바이벌에 로그인하세요.</p>
+        
+        <div class="auth-input-group">
+          <input type="text" id="auth-username" class="auth-input" placeholder="사용자 이름 (아이디)" maxlength="16" />
+          <input type="password" id="auth-password" class="auth-input" placeholder="비밀번호" maxlength="16" />
+          <input type="text" id="auth-referral" class="auth-input hidden" placeholder="추천인 코드 (Jok2r 입력 필요)" maxlength="16" />
+        </div>
+        
+        <div class="auth-error" id="auth-error-msg"></div>
+        
+        <button id="btn-auth-submit" class="btn btn-primary btn-lg">로그인</button>
+        <button id="btn-auth-toggle" class="auth-toggle-btn">계정이 없으신가요? 회원가입</button>
+      </div>
+    </div>
+
+    <!-- 로비 및 상점 화면 -->
+    <div id="start-screen" class="screen-overlay glass hidden">
+      <div class="lobby-dashboard glass">
+        <!-- 상단 헤더 -->
+        <div class="lobby-header">
+          <div class="lobby-title-grp">
+            <h1 class="glow-blue"><span id="user-display-name">플레이어</span>의 야간숲 2D</h1>
+            <p class="subtitle">동료들과 함께 어둠 속 모닥불을 수호하고 야생 동물의 습격에서 생존하세요.</p>
+          </div>
+          <div class="lobby-gold-widget card-glass">
+            <span class="gold-icon">🪙</span>
+            <span class="gold-label">보유 골드:</span>
+            <span id="lobby-gold-val" class="gold-amount">0</span> <span class="gold-unit">G</span>
+          </div>
+        </div>
+
+        <!-- 메인 콘텐츠 영역 (좌: 파티 설정, 우: 직업 상점) -->
+        <div class="lobby-main">
+          <!-- 좌측: 파티 관리 -->
+          <div class="lobby-section party-section">
+            <div class="section-title-bar">
+              <h2>👥 내 파티원 설정 (최대 4인)</h2>
+              <button id="btn-invite-bot" class="btn btn-accent btn-sm">🤖 동료 고용 (1 G)</button>
+            </div>
+            <div id="lobby-party-list" class="party-list-grid">
+              <!-- 파티원 카드들이 JS에 의해 생성됩니다 -->
+            </div>
+
+            <!-- 캐릭터 스킨 선택 -->
+            <div class="skin-selector-section">
+              <div class="skin-selector-title">🦊 플레이어 캐릭터 스킨 선택</div>
+              <div class="skin-selector">
+                <div class="skin-card active" data-skin="SQUIRREL">
+                  <span class="skin-card-emoji">🐿️</span>
+                  <span class="skin-card-name">다람쥐</span>
+                </div>
+                <div class="skin-card" data-skin="PANDA">
+                  <span class="skin-card-emoji">🐼</span>
+                  <span class="skin-card-name">판다</span>
+                </div>
+                <div class="skin-card" data-skin="RACOON">
+                  <span class="skin-card-emoji">🦝</span>
+                  <span class="skin-card-name">너구리</span>
+                </div>
+                <div class="skin-card" data-skin="REDPANDA">
+                  <span class="skin-card-emoji">🦊</span>
+                  <span class="skin-card-name">레서판다</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측: 직업 상점 -->
+          <div class="lobby-section shop-section">
+            <h2>🛠️ 모험가 직업 상점</h2>
+            <div id="lobby-job-list" class="job-list-vertical">
+              <!-- 직업 해금 및 구매 리스트가 JS에 의해 생성됩니다 -->
+            </div>
+          </div>
+
+          <!-- 신설: 접속 중인 플레이어 목록 -->
+          <div class="lobby-section online-users-section">
+            <h2>🟢 접속 중인 플레이어</h2>
+            <div id="lobby-online-users-list" class="online-users-list-vertical">
+              <!-- 접속 중인 유저 리스트가 JS에 의해 생성됩니다 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 플레이 및 팁 영역 -->
+        <div class="lobby-footer">
+          <div class="game-rules card-glass">
+            <span>💡 <strong>밤(3분)과 어둠의 위협!</strong> 숲 외곽에 늑대(데미지 5)와 곰(데미지 15)이 서식합니다. 이들은 모닥불 불빛을 무서워해 안전지대 내로 진입하지 못하므로, 안전지대를 수호하며 자원을 벌목하세요.</span>
+          </div>
+          <button id="btn-start" class="btn btn-primary btn-lg">게임 시작</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 하단 인벤토리 핫바 (PC 1~4 단축키 및 모바일 터치 대응) -->
+    <div id="inventory-hotbar" class="glass">
+      <div class="hotbar-slot active" data-slot="1" id="slot-1">
+        <span class="slot-num">1</span>
+        <span class="slot-icon">🪓</span>
+        <span class="slot-label">도끼</span>
+      </div>
+      <div class="hotbar-slot" data-slot="2" id="slot-2">
+        <span class="slot-num">2</span>
+        <span class="slot-icon">🕯️</span>
+        <span class="slot-label">횃불</span>
+        <span class="slot-count" id="hotbar-torch-count">0</span>
+      </div>
+      <div class="hotbar-slot" data-slot="3" id="slot-3">
+        <span class="slot-num">3</span>
+        <span class="slot-icon">🧪</span>
+        <span class="slot-label">물약</span>
+        <span class="slot-count" id="hotbar-potion-count">0</span>
+      </div>
+      <div class="hotbar-slot" data-slot="4" id="slot-4">
+        <span class="slot-num">4</span>
+        <span class="slot-icon">📖</span>
+        <span class="slot-label">레시피북</span>
+      </div>
+      <div class="hotbar-slot" data-slot="5" id="slot-5">
+        <span class="slot-num">5</span>
+        <span class="slot-icon">🔫</span>
+        <span class="slot-label">권총</span>
+      </div>
+      <div class="hotbar-slot" data-slot="6" id="slot-6">
+        <span class="slot-num">6</span>
+        <span class="slot-icon">🏹</span>
+        <span class="slot-label">소총</span>
+      </div>
+    </div>
+
+    <!-- 모바일 가상 조이스틱 & 액션 버튼 조작계 -->
+    <div id="mobile-controls-overlay" class="hidden">
+      <!-- 좌측 가상 조이스틱 -->
+      <div id="joystick-container">
+        <div id="joystick-base">
+          <div id="joystick-knob"></div>
+        </div>
+      </div>
+      
+      <!-- 우측 가상 버튼 모음 -->
+      <div id="mobile-action-buttons">
+        <button id="btn-mobile-chop" class="mobile-btn chop-btn">🪓 ACT</button>
+        <div class="mobile-sub-buttons">
+          <button id="btn-mobile-feed" class="mobile-btn sub-btn">🔥 E</button>
+          <button id="btn-mobile-craft" class="mobile-btn sub-btn">🛠️ F</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 인게임 채팅 입력 오버레이 (Enter로 활성화, 개발자 전용) -->
+    <div id="chat-input-wrapper" class="hidden">
+      <input type="text" id="chat-input" maxlength="45" placeholder="메시지를 입력하세요 (오직 Jok2r 개발자만 입력 가능)..." />
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
