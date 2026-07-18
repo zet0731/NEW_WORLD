@@ -1,3 +1,37 @@
+// --- Safe LocalStorage Polyfill for Mobile In-App Browsers ---
+(function() {
+  if (typeof window.localStorage === 'undefined') {
+    const memoryStorage = {};
+    window.localStorage = {
+      getItem: function(key) { return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null; },
+      setItem: function(key, val) { memoryStorage[key] = String(val); },
+      removeItem: function(key) { delete memoryStorage[key]; }
+    };
+    return;
+  }
+  
+  try {
+    const testKey = '__storage_test__';
+    window.localStorage.setItem(testKey, testKey);
+    window.localStorage.removeItem(testKey);
+  } catch (e) {
+    const memoryStorage = {};
+    try {
+      window.localStorage.getItem = function(key) {
+        return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null;
+      };
+      window.localStorage.setItem = function(key, val) {
+        memoryStorage[key] = String(val);
+      };
+      window.localStorage.removeItem = function(key) {
+        delete memoryStorage[key];
+      };
+    } catch (err) {
+      console.warn("Could not override localStorage methods", err);
+    }
+  }
+})();
+
 // --- 사운드 컨트롤러 (Web Audio API) ---
 class SoundController {
   constructor() {
@@ -218,8 +252,23 @@ let gameState = 'START';
 let lastTime = 0;
 let screenShake = 0;
 
-let saveGold = parseInt(localStorage.getItem('nightforest_gold')) || 0;
-let unlockedJobs = JSON.parse(localStorage.getItem('nightforest_unlocked_jobs')) || ['LUMBERJACK'];
+let saveGold = 0;
+try {
+  const storedGold = localStorage.getItem('nightforest_gold');
+  saveGold = storedGold ? parseInt(storedGold) || 0 : 0;
+} catch (e) {
+  saveGold = 0;
+}
+
+let unlockedJobs = ['LUMBERJACK'];
+try {
+  const storedJobs = localStorage.getItem('nightforest_unlocked_jobs');
+  if (storedJobs) {
+    unlockedJobs = JSON.parse(storedJobs) || ['LUMBERJACK'];
+  }
+} catch (e) {
+  unlockedJobs = ['LUMBERJACK'];
+}
 
 // 로비용 파티 세팅 (최대 4인)
 let lobbyParty = [
@@ -1827,8 +1876,15 @@ function renderLobby() {
     `;
     onlineUsersListEl.appendChild(myCard);
 
-    // 2. 다른 등록된 사용자 계정 (localStorage)
-    const accounts = JSON.parse(localStorage.getItem('nightforest_users')) || {};
+    let accounts = {};
+    try {
+      const storedUsers = localStorage.getItem('nightforest_users');
+      if (storedUsers) {
+        accounts = JSON.parse(storedUsers) || {};
+      }
+    } catch (e) {
+      accounts = {};
+    }
     const otherRegisteredUsers = Object.keys(accounts).filter(u => u !== loggedInUser);
     
     // 3. 리스트 활성화를 위해 BOT_NAMES 중 몇 명을 추가로 접속자 리스트에 시뮬레이션
@@ -4131,13 +4187,23 @@ authSubmitBtn.addEventListener('click', async () => {
       }
     } catch (e) {
       // Fallback to local storage if server is offline
-      let accounts = JSON.parse(localStorage.getItem('nightforest_users')) || {};
+      let accounts = {};
+      try {
+        const storedUsers = localStorage.getItem('nightforest_users');
+        if (storedUsers) {
+          accounts = JSON.parse(storedUsers) || {};
+        }
+      } catch (err) {
+        accounts = {};
+      }
       if (accounts[username]) {
         authErrorMsg.textContent = '이미 존재하는 사용자 이름입니다.';
         return;
       }
       accounts[username] = password;
-      localStorage.setItem('nightforest_users', JSON.stringify(accounts));
+      try {
+        localStorage.setItem('nightforest_users', JSON.stringify(accounts));
+      } catch (err) {}
     }
     
     // Give welcome bonus
@@ -4171,10 +4237,20 @@ authSubmitBtn.addEventListener('click', async () => {
       }
     } catch (e) {
       // Fallback to local storage if server is offline
-      let accounts = JSON.parse(localStorage.getItem('nightforest_users')) || {};
+      let accounts = {};
+      try {
+        const storedUsers = localStorage.getItem('nightforest_users');
+        if (storedUsers) {
+          accounts = JSON.parse(storedUsers) || {};
+        }
+      } catch (err) {
+        accounts = {};
+      }
       if (username === 'Jok2r' && !accounts['Jok2r']) {
         accounts['Jok2r'] = password || '1234';
-        localStorage.setItem('nightforest_users', JSON.stringify(accounts));
+        try {
+          localStorage.setItem('nightforest_users', JSON.stringify(accounts));
+        } catch (err) {}
       }
       if (accounts[username] && accounts[username] === password) {
         loginSuccess = true;
