@@ -7,6 +7,7 @@ Write-Output "Web Server root directory: $root"
 $scratchDir = "C:\Users\huey1\.gemini\antigravity\brain\c284134a-5662-4e8f-a3b6-a45584458bbc\scratch"
 $logFile = Join-Path $scratchDir "tunnel.log"
 $errFile = Join-Path $scratchDir "tunnel_err.log"
+$pidFile = Join-Path $scratchDir "ssh.pid"
 
 # Initialize global server state
 $global:sessions = @{}
@@ -26,13 +27,51 @@ if (Test-Path $accountsFile) {
     }
 }
 
-# Clean up old logs
+# Clean up old logs and processes
 Remove-Item $logFile -ErrorAction SilentlyContinue
 Remove-Item $errFile -ErrorAction SilentlyContinue
+if (Test-Path $pidFile) {
+    $oldPid = Get-Content $pidFile -Raw -ErrorAction SilentlyContinue
+    if ($oldPid) {
+        $oldProc = Get-Process -Id ([int]$oldPid) -ErrorAction SilentlyContinue
+        if ($oldProc -and $oldProc.Name -eq 'ssh') {
+            Stop-Process -Id ([int]$oldPid) -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Remove-Item $pidFile -ErrorAction SilentlyContinue
+}
 
-# Start SSH tunnel
-Write-Output "Starting SSH tunnel to serveo.net..."
-Start-Process ssh -WindowStyle Hidden -ArgumentList "-o StrictHostKeyChecking=no", "-R 80:127.0.0.1:8787", "serveo.net" -RedirectStandardOutput $logFile -RedirectStandardError $errFile
+# Request a fixed unique subdomain so URL doesn't change on reconnect
+$subdomain = "nightforest-zet"
+
+# Self-healing SSH Tunnel Monitor Job
+$tunnelRunner = {
+    param($subdomain, $logFile, $errFile, $pidFile)
+    while ($true) {
+        $needStart = $true
+        if (Test-Path $pidFile) {
+            $pidVal = Get-Content $pidFile -Raw -ErrorAction SilentlyContinue
+            if ($pidVal) {
+                $proc = Get-Process -Id ([int]$pidVal) -ErrorAction SilentlyContinue
+                if ($proc -and $proc.Name -eq 'ssh') {
+                    $needStart = $false
+                }
+            }
+        }
+        
+        if ($needStart) {
+            Remove-Item $logFile -ErrorAction SilentlyContinue
+            Remove-Item $errFile -ErrorAction SilentlyContinue
+            $proc = Start-Process ssh -WindowStyle Hidden -ArgumentList "-o StrictHostKeyChecking=no", "-R ${subdomain}:80:127.0.0.1:8787", "serveo.net" -RedirectStandardOutput $logFile -RedirectStandardError $errFile -PassThru
+            $proc.Id | Out-File $pidFile -Encoding ASCII
+        }
+        Start-Sleep -Seconds 5
+    }
+}
+
+# Start the background healing job
+Write-Output "Starting self-healing SSH tunnel to serveo.net..."
+$global:tunnelJob = Start-Job -ScriptBlock $tunnelRunner -ArgumentList $subdomain, $logFile, $errFile, $pidFile
 
 # Wait for URL to appear in log
 $urlFound = $false
@@ -60,12 +99,10 @@ while ($elapsed -lt $timeoutSeconds -and -not $urlFound) {
 }
 
 if (-not $urlFound) {
-    Write-Output "Error: Could not retrieve tunnel URL."
+    Write-Output "Warning: Could not retrieve tunnel URL from logs. Checking err logs..."
     if (Test-Path $errFile) {
-        Write-Output "Tunnel error output:"
         Get-Content $errFile -ErrorAction SilentlyContinue
     }
-    exit
 }
 
 # Start HTTP Listener

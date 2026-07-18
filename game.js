@@ -4399,7 +4399,8 @@ async function syncLobbyState() {
       }
     }
   } catch (e) {
-    // Fail silently (offline fallback mode)
+    // Fall back to offline local simulation
+    renderLobbyLocal();
   }
 }
 
@@ -4511,4 +4512,53 @@ function renderLobbyOnly() {
       renderLobbyOnly();
     });
   });
+}
+
+// --- [신설] 오프라인 대체 렌더러 ---
+function renderLobbyLocal() {
+  const onlineUsersListEl = document.getElementById('lobby-online-users-list');
+  if (onlineUsersListEl) {
+    onlineUsersListEl.innerHTML = '';
+    
+    // 1. 현재 로그인한 본인 추가
+    const activeUserName = loggedInUser || "플레이어";
+    const myCard = document.createElement('div');
+    myCard.className = 'online-user-card';
+    myCard.innerHTML = `
+      <div class="online-user-status-dot online"></div>
+      <div class="online-user-details">
+        <span class="online-user-name">${activeUserName} (나)</span>
+        <span class="online-user-status-text">대기실 대기 중 [로컬 모드]</span>
+      </div>
+    `;
+    onlineUsersListEl.appendChild(myCard);
+
+    // 2. 가상 접속자 목록 출력
+    const simUsers = ["민수", "지민", "서연", "준우", "하은", "지우"];
+    simUsers.forEach((simName, idx) => {
+      let status = 'online';
+      let text = '대기실 대기 중';
+      if (idx === 1 || idx === 3) {
+        status = 'away';
+        text = `인게임 플레이 중 (Day ${Math.floor(Math.random()*4)+1})`;
+      } else if (idx === 5) {
+        status = 'offline';
+        text = '오프라인';
+      }
+      
+      const uCard = document.createElement('div');
+      uCard.className = 'online-user-card';
+      uCard.innerHTML = `
+        <div class="online-user-status-dot ${status}"></div>
+        <div class="online-user-details">
+          <span class="online-user-name">${simName}</span>
+          <span class="online-user-status-text">${text}</span>
+        </div>
+      `;
+      onlineUsersListEl.appendChild(uCard);
+    });
+  }
+  
+  // 로비 카드들을 로컬 기준으로 리렌더링
+  renderLobbyOnly();
 }
