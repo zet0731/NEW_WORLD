@@ -4501,6 +4501,150 @@ btnSubmitInquiry.addEventListener('click', async () => {
   }
 });
 
+// ===== 🔨 모더레이터 정지/해제 모달 시스템 =====
+
+// 정지 모달 HTML 삽입
+const banModalHtml = `
+<div id="ban-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#1a1f2e; border:1px solid rgba(255,80,80,0.4); border-radius:14px; padding:28px 32px; min-width:300px; max-width:380px; color:#fff; box-shadow:0 0 40px rgba(200,0,0,0.3);">
+    <h3 style="margin:0 0 6px; color:#ff6060;">🔨 플레이어 정지</h3>
+    <p id="ban-modal-target-label" style="margin:0 0 16px; color:#aaa; font-size:0.9rem;"></p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:0.82rem; color:#aaa;">정지 기간 (예: 1일, 3일, 영구)</label>
+      <input id="ban-modal-duration" value="1일" style="width:100%; margin-top:4px; padding:8px; background:#0d1117; border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:0.9rem; box-sizing:border-box;" />
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:0.82rem; color:#aaa;">정지 사유</label>
+      <input id="ban-modal-reason" placeholder="사유를 입력하세요..." style="width:100%; margin-top:4px; padding:8px; background:#0d1117; border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:0.9rem; box-sizing:border-box;" />
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button id="ban-modal-confirm" style="flex:1; background:#c0392b; color:#fff; border:none; border-radius:8px; padding:10px; font-size:0.9rem; cursor:pointer; font-weight:bold;">🔨 정지하기</button>
+      <button id="ban-modal-unban" style="flex:1; background:#27ae60; color:#fff; border:none; border-radius:8px; padding:10px; font-size:0.9rem; cursor:pointer; font-weight:bold;">🔓 정지 해제</button>
+      <button id="ban-modal-cancel" style="flex:0.6; background:#444; color:#fff; border:none; border-radius:8px; padding:10px; font-size:0.9rem; cursor:pointer;">취소</button>
+    </div>
+    <div id="ban-modal-msg" style="margin-top:10px; font-size:0.82rem; min-height:18px;"></div>
+  </div>
+</div>`;
+document.body.insertAdjacentHTML('beforeend', banModalHtml);
+
+const banModal = document.getElementById('ban-modal');
+const banModalMsg = document.getElementById('ban-modal-msg');
+let banModalTarget = '';
+
+function showBanModal(username) {
+  banModalTarget = username;
+  document.getElementById('ban-modal-target-label').textContent = `대상: ${username}`;
+  document.getElementById('ban-modal-duration').value = '1일';
+  document.getElementById('ban-modal-reason').value = '';
+  banModalMsg.textContent = '';
+  banModal.style.display = 'flex';
+}
+
+document.getElementById('ban-modal-cancel').addEventListener('click', () => {
+  banModal.style.display = 'none';
+});
+
+document.getElementById('ban-modal-confirm').addEventListener('click', async () => {
+  const duration = document.getElementById('ban-modal-duration').value.trim() || '1일';
+  const reason = document.getElementById('ban-modal-reason').value.trim() || '사유 미기재';
+  try {
+    const res = await fetch('/api/ban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: banModalTarget, duration, reason })
+    });
+    if (res.ok) {
+      banModalMsg.innerHTML = `<span style="color:#2ecc71">✅ ${banModalTarget} 정지 완료 (${duration} / ${reason})</span>`;
+      showToast(`🔨 ${banModalTarget} 유저를 ${duration} 동안 정지시켰습니다.`);
+      setTimeout(() => { banModal.style.display = 'none'; }, 1500);
+    } else {
+      banModalMsg.innerHTML = `<span style="color:#e74c3c">❌ 정지 실패. 서버 상태를 확인하세요.</span>`;
+    }
+  } catch(e) {
+    banModalMsg.innerHTML = `<span style="color:#e74c3c">❌ 서버에 연결할 수 없습니다.</span>`;
+  }
+});
+
+document.getElementById('ban-modal-unban').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/unban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: banModalTarget })
+    });
+    if (res.ok) {
+      banModalMsg.innerHTML = `<span style="color:#2ecc71">🔓 ${banModalTarget} 정지 해제 완료!</span>`;
+      showToast(`🔓 ${banModalTarget} 유저의 정지를 해제했습니다.`);
+      setTimeout(() => { banModal.style.display = 'none'; }, 1500);
+    } else {
+      banModalMsg.innerHTML = `<span style="color:#e74c3c">❌ 해제 실패.</span>`;
+    }
+  } catch(e) {
+    banModalMsg.innerHTML = `<span style="color:#e74c3c">❌ 서버에 연결할 수 없습니다.</span>`;
+  }
+});
+
+// ===== 캔버스 우클릭 → 플레이어 정지 컨텍스트 메뉴 =====
+const ctxMenuHtml = `
+<div id="player-context-menu" style="display:none; position:fixed; z-index:9998; background:#1a1f2e; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:6px 0; min-width:150px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+  <div id="ctx-player-name" style="padding:6px 14px; font-size:0.8rem; color:#aaa; border-bottom:1px solid rgba(255,255,255,0.08); pointer-events:none;"></div>
+  <div id="ctx-ban-btn" style="padding:8px 14px; color:#ff6060; cursor:pointer; font-size:0.85rem;">🔨 정지하기</div>
+  <div id="ctx-unban-btn" style="padding:8px 14px; color:#2ecc71; cursor:pointer; font-size:0.85rem;">🔓 정지 해제</div>
+</div>`;
+document.body.insertAdjacentHTML('beforeend', ctxMenuHtml);
+
+const playerCtxMenu = document.getElementById('player-context-menu');
+let ctxTarget = '';
+
+document.getElementById('ctx-ban-btn').addEventListener('click', () => {
+  playerCtxMenu.style.display = 'none';
+  showBanModal(ctxTarget);
+});
+document.getElementById('ctx-unban-btn').addEventListener('click', () => {
+  playerCtxMenu.style.display = 'none';
+  showBanModal(ctxTarget);
+});
+document.addEventListener('click', () => { playerCtxMenu.style.display = 'none'; });
+
+// 캔버스 우클릭 이벤트 (Jok2r만)
+canvas.addEventListener('contextmenu', (e) => {
+  if (!isDeveloper || gameState !== 'PLAYING') return;
+  e.preventDefault();
+  
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  
+  // Convert to world coordinates
+  const wx = mx - canvas.width / 2 + camera.x;
+  const wy = my - canvas.height / 2 + camera.y;
+  
+  // Check if click is near any bot (simulating other players)
+  let foundTarget = '';
+  bots.forEach(b => {
+    if (b.state === 'dead') return;
+    const dist = Math.hypot(b.x - wx, b.y - wy);
+    if (dist < 30 && b.name && b.name !== '(AI)') {
+      foundTarget = b.name;
+    }
+  });
+  
+  // Check if click is near a lobby online player (future multiplayer)
+  if (!foundTarget) {
+    // Show generic player info panel from current lobby
+    const nearUsers = lobbyParty.filter(p => p.type === 'friend' && p.name);
+    // Without real positions, allow right-click anywhere to pick a user
+  }
+  
+  if (foundTarget) {
+    ctxTarget = foundTarget.replace(' ✔️', '').replace(' (나)', '');
+    document.getElementById('ctx-player-name').textContent = `플레이어: ${ctxTarget}`;
+    playerCtxMenu.style.left = e.clientX + 'px';
+    playerCtxMenu.style.top = e.clientY + 'px';
+    playerCtxMenu.style.display = 'block';
+  }
+});
+
 // 스킨 선택 이벤트 바인딩
 document.querySelectorAll('.skin-card').forEach(card => {
   card.addEventListener('click', () => {
@@ -4571,6 +4715,7 @@ async function syncLobbyState() {
               <span class="online-user-status-text">${u.status}</span>
             </div>
             ${actionBtn}
+            ${isDeveloper && !isMe ? `<button class="btn-mod-ban" data-username="${u.username}" style="margin-left:6px; background: #c0392b; color: #fff; border: none; border-radius: 5px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer;">🔨 정지</button>` : ''}
           `;
           onlineUsersListEl.appendChild(uCard);
         });
@@ -4594,6 +4739,15 @@ async function syncLobbyState() {
             }
           });
         });
+        
+        // Bind moderator ban buttons
+        if (isDeveloper) {
+          document.querySelectorAll('.btn-mod-ban').forEach(btn => {
+            btn.addEventListener('click', () => {
+              showBanModal(btn.dataset.username);
+            });
+          });
+        }
       }
       
       // Sync local lobbyParty array based on server party

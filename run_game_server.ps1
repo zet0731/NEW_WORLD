@@ -35,16 +35,17 @@ if (Test-Path $accountsFile) {
     }
 }
 
-$banFile = "$env:USERPROFILE\OneDrive\Desktop\정지노트.txt"
-$inquiryFile = "$env:USERPROFILE\OneDrive\Desktop\정지문의.txt"
+$banFile = "$env:USERPROFILE\OneDrive\Desktop\ban_note.txt"
+$inquiryFile = "$env:USERPROFILE\OneDrive\Desktop\ban_inquiry.txt"
 
 # Fallback: try regular Desktop path (non-OneDrive)
 if (-not (Test-Path (Split-Path $banFile -Parent))) {
-    $banFile = "$env:USERPROFILE\Desktop\정지노트.txt"
-    $inquiryFile = "$env:USERPROFILE\Desktop\정지문의.txt"
+    $banFile = "$env:USERPROFILE\Desktop\ban_note.txt"
+    $inquiryFile = "$env:USERPROFILE\Desktop\ban_inquiry.txt"
 }
 
-# Migrate any old files from the game project folder
+# Migrate any old Korean-named files to the new ASCII names (silently)
+$oldBanKorean = "$env:USERPROFILE\OneDrive\Desktop\ban_note.txt"
 $projectOldBanNote = Join-Path $root "ban_note.txt"
 if (Test-Path $projectOldBanNote) {
     if (-not (Test-Path $banFile)) {
@@ -54,8 +55,17 @@ if (Test-Path $projectOldBanNote) {
     Remove-Item $projectOldBanNote -Force
 }
 
-Write-Output "Ban file path: $banFile"
-Write-Output "Inquiry file path: $inquiryFile"
+if (-not (Test-Path $banFile)) {
+    $template = "# [야간숲 서버 Ban Note]`n# 정지할 유저 이름을 한 줄에 하나씩 적고 저장하면 즉시 로그인이 차단됩니다.`n# 형식: 아이디 기간 사유`n# 예시: Gildong 2일 트롤링`n# ----------------------------------------------------`n"
+    [System.IO.File]::WriteAllText($banFile, $template, [System.Text.Encoding]::UTF8)
+}
+if (-not (Test-Path $inquiryFile)) {
+    $template2 = "# [야간숲 정지 문의 내역]`n# 정지된 유저들이 제출한 문의가 여기에 기록됩니다.`n# ----------------------------------------------------`n"
+    [System.IO.File]::WriteAllText($inquiryFile, $template2, [System.Text.Encoding]::UTF8)
+}
+
+Write-Output "Ban file: $banFile"
+Write-Output "Inquiry file: $inquiryFile"
 
 function Get-BannedUsers {
     $bans = @{}
