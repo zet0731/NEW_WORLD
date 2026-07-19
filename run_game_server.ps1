@@ -80,13 +80,12 @@ while ($elapsed -lt $timeoutSeconds -and -not $urlFound) {
                 Write-Output "`n=================================================="
                 Write-Output "  🌲 야간숲 2D 서바이벌 게임 서버 구동 완료 🌲"
                 Write-Output "=================================================="
-                Write-Output " [접속 방법 1] 외부 데이터(LTE/5G) 접속용 링크:"
+                Write-Output " [공유 주소] 모바일 폰이나 친구 컴퓨터 접속용 링크:"
                 Write-Output "  $url"
                 Write-Output "  (⚠️ 주의: 서버를 껐다 켤 때마다 주소가 새로 바뀝니다!)"
                 Write-Output "--------------------------------------------------"
-                Write-Output " [접속 방법 2] 같은 집 와이파이(Wi-Fi) 직접 접속용 링크:"
-                Write-Output "  http://$localIp:8787"
-                Write-Output "  (인터넷 차단/오류 우회, 가장 빠른 다이렉트 접속)"
+                Write-Output " [로컬 접속] 이 서버를 구동 중인 PC 본체에서 접속:"
+                Write-Output "  http://127.0.0.1:8787"
                 Write-Output "==================================================`n"
                 $urlFound = $true
                 break
@@ -126,13 +125,12 @@ if (-not $urlFound) {
                     Write-Output "`n=================================================="
                     Write-Output "  🌲 야간숲 2D 서바이벌 게임 서버 구동 완료 🌲"
                     Write-Output "=================================================="
-                    Write-Output " [접속 방법 1] 외부 데이터(LTE/5G) 접속용 링크:"
+                    Write-Output " [공유 주소] 모바일 폰이나 친구 컴퓨터 접속용 링크:"
                     Write-Output "  $url"
                     Write-Output "  (⚠️ 주의: 서버를 껐다 켤 때마다 주소가 새로 바뀝니다!)"
                     Write-Output "--------------------------------------------------"
-                    Write-Output " [접속 방법 2] 같은 집 와이파이(Wi-Fi) 직접 접속용 링크:"
-                    Write-Output "  http://$localIp:8787"
-                    Write-Output "  (인터넷 차단/오류 우회, 가장 빠른 다이렉트 접속)"
+                    Write-Output " [로컬 접속] 이 서버를 구동 중인 PC 본체에서 접속:"
+                    Write-Output "  http://127.0.0.1:8787"
                     Write-Output "==================================================`n"
                     $urlFound = $true
                     break
