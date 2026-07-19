@@ -1,18 +1,44 @@
 // --- Safe LocalStorage Polyfill for Mobile In-App Browsers ---
 const localStorage = (function() {
+  const memoryStorage = {};
+  let realStorage = null;
   try {
-    const testKey = '__storage_test__';
-    window.localStorage.setItem(testKey, testKey);
-    window.localStorage.removeItem(testKey);
-    return window.localStorage;
+    if (typeof window.localStorage !== 'undefined') {
+      const testKey = '__storage_test__';
+      window.localStorage.setItem(testKey, testKey);
+      window.localStorage.removeItem(testKey);
+      realStorage = window.localStorage;
+    }
   } catch (e) {
-    const memoryStorage = {};
-    return {
-      getItem: function(key) { return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null; },
-      setItem: function(key, val) { memoryStorage[key] = String(val); },
-      removeItem: function(key) { delete memoryStorage[key]; }
-    };
+    realStorage = null;
   }
+  
+  return {
+    getItem: function(key) {
+      try {
+        if (realStorage) return realStorage.getItem(key);
+      } catch (err) {}
+      return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null;
+    },
+    setItem: function(key, val) {
+      try {
+        if (realStorage) {
+          realStorage.setItem(key, String(val));
+          return;
+        }
+      } catch (err) {}
+      memoryStorage[key] = String(val);
+    },
+    removeItem: function(key) {
+      try {
+        if (realStorage) {
+          realStorage.removeItem(key);
+          return;
+        }
+      } catch (err) {}
+      delete memoryStorage[key];
+    }
+  };
 })();
 
 // --- 사운드 컨트롤러 (Web Audio API) ---
@@ -2524,7 +2550,7 @@ window.addEventListener('blur', () => {
   joystickActive = false;
 });
 
-window.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     if (gameState !== 'PLAYING') return;
     e.preventDefault();
