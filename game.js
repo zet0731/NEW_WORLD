@@ -1,34 +1,17 @@
 // --- Safe LocalStorage Polyfill for Mobile In-App Browsers ---
-(function() {
-  if (typeof window.localStorage === 'undefined') {
-    const memoryStorage = {};
-    window.localStorage = {
-      getItem: function(key) { return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null; },
-      setItem: function(key, val) { memoryStorage[key] = String(val); },
-      removeItem: function(key) { delete memoryStorage[key]; }
-    };
-    return;
-  }
-  
+const localStorage = (function() {
   try {
     const testKey = '__storage_test__';
     window.localStorage.setItem(testKey, testKey);
     window.localStorage.removeItem(testKey);
+    return window.localStorage;
   } catch (e) {
     const memoryStorage = {};
-    try {
-      window.localStorage.getItem = function(key) {
-        return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null;
-      };
-      window.localStorage.setItem = function(key, val) {
-        memoryStorage[key] = String(val);
-      };
-      window.localStorage.removeItem = function(key) {
-        delete memoryStorage[key];
-      };
-    } catch (err) {
-      console.warn("Could not override localStorage methods", err);
-    }
+    return {
+      getItem: function(key) { return memoryStorage.hasOwnProperty(key) ? memoryStorage[key] : null; },
+      setItem: function(key, val) { memoryStorage[key] = String(val); },
+      removeItem: function(key) { delete memoryStorage[key]; }
+    };
   }
 })();
 
