@@ -160,6 +160,8 @@ const soundCtrl = new SoundController();
 // --- 로그인 / 회원 정보 전역 상태 ---
 let loggedInUser = null;
 let isDeveloper = false; 
+let isGodMode = false;
+let devSpeedMultiplier = 1.0; 
 
 // --- 직업 고유 정보 데이터 ---
 const JOB_DATA = {
@@ -340,6 +342,9 @@ const player = {
     let spd = this.baseSpeed;
     if (this.job === 'EXPLORER') spd *= 1.35;
     if (this.hasBoots) spd *= 1.25;
+    if (isDeveloper && typeof devSpeedMultiplier !== 'undefined') {
+      spd *= devSpeedMultiplier;
+    }
     return spd;
   },
 
@@ -627,6 +632,11 @@ class BossProjectile {
     
     // 플레이어 충돌 검사
     if (distance(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
+      if (isGodMode) {
+        this.life = 0; // 소멸
+        showToast("🛡️ [God Mode] 파이어볼 피해를 차단했습니다!");
+        return;
+      }
       let fireDmg = 25;
       // 과다회복이 있으면 먼저 소모
       if (player.overHp > 0) {
@@ -1059,6 +1069,11 @@ class Enemy {
   attack(target) {
     if (this.attackCooldown > 0) return;
     this.attackCooldown = (this.typeKey === 'WOLF') ? 1.2 : 1.6;
+    
+    if (target === player && isGodMode) {
+      showToast(`🛡️ [God Mode] ${this.name}의 피해를 차단했습니다!`);
+      return;
+    }
     
     target.hp -= this.damage;
     soundCtrl.playHurt();
@@ -2567,8 +2582,56 @@ window.addEventListener('keydown', (e) => {
           } else if (cmd === '/clear') {
             enemies.length = 0;
             showToast('⚔️ [Dev 치트] 필드의 모든 몬스터가 소멸되었습니다!');
+          } else if (cmd === '/god') {
+            isGodMode = !isGodMode;
+            showToast(`🛡️ [Dev 치트] 무적 모드가 [${isGodMode ? '활성화' : '비활성화'}] 되었습니다.`);
+          } else if (cmd === '/speed') {
+            const mult = parseFloat(parts[1]) || 1.0;
+            devSpeedMultiplier = mult;
+            showToast(`⚡ [Dev 치트] 이동 속도 배율이 x${mult}배로 적용되었습니다.`);
+          } else if (cmd === '/spawn') {
+            const type = (parts[1] || 'WOLF').toUpperCase();
+            const count = parseInt(parts[2]) || 1;
+            for (let i = 0; i < count; i++) {
+              const rx = player.x + (Math.random() - 0.5) * 150;
+              const ry = player.y + (Math.random() - 0.5) * 150;
+              if (type === 'WOLF' || type === 'BEAR' || type === 'BOSS') {
+                enemies.push(new Enemy(type, rx, ry));
+              } else if (type === 'TREE' || type === 'PINE' || type === 'CRYSTAL' || type === 'ANCIENT') {
+                const treeType = (type === 'TREE') ? 'NORMAL' : type;
+                trees.push(new Tree(rx, ry, treeType));
+              }
+            }
+            showToast(`👾 [Dev 치트] ${type}가 ${count}마리/개 소환되었습니다.`);
+          } else if (cmd === '/time') {
+            const arg = parts[1].toLowerCase();
+            if (arg === 'day') {
+              dayTime = 0;
+              showToast('☀️ [Dev 치트] 시간이 [낮]으로 설정되었습니다.');
+            } else if (arg === 'night') {
+              dayTime = DAY_LIGHT_TIME;
+              showToast('🌙 [Dev 치트] 시간이 [밤]으로 설정되었습니다.');
+            } else {
+              const val = parseFloat(arg);
+              if (!isNaN(val)) {
+                dayTime = val;
+                showToast(`⏱️ [Dev 치트] 시간이 ${val}초로 설정되었습니다.`);
+              }
+            }
+          } else if (cmd === '/ammo') {
+            const amt = parseInt(parts[1]) || 50;
+            player.pistolAmmo += amt;
+            player.rifleAmmo += amt;
+            updateHUD();
+            showToast(`🔫 [Dev 치트] 총기 탄약이 각각 +${amt}발 보급되었습니다.`);
+          } else if (cmd === '/unlockjobs') {
+            const allJobs = ['LUMBERJACK', 'EXPLORER', 'FIREKEEPER', 'WARRIOR', 'COOK', 'CHEF', 'HUNTER'];
+            unlockedJobs = [...allJobs];
+            localStorage.setItem('nightforest_unlocked_jobs', JSON.stringify(unlockedJobs));
+            renderLobby();
+            showToast('🛠️ [Dev 치트] 모든 직업이 즉시 해금되었습니다!');
           } else {
-            showToast('❌ 잘못된 개발자 명령어입니다. (/gold [수량], /wood [수량], /heal, /clear)');
+            showToast('❌ 명령어 안내: /gold [수량], /wood [수량], /heal, /clear, /god, /speed [배율], /spawn [WOLF/BEAR/BOSS/TREE] [수량], /time [day/night], /ammo [수량], /unlockjobs');
           }
         } else {
           player.chatText = chatVal;
@@ -2923,6 +2986,7 @@ function handleDayNightCycle(dt) {
     }
     
     if (!inLight) {
+      if (isGodMode) return;
       const now = Date.now();
       if (now - player.lastHurtTime > 1000) {
         let dmg = 8;
