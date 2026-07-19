@@ -1,4 +1,4 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Dynamically resolve root directory to avoid encoding/garbling issues
 $root = (Get-Location).Path
@@ -61,8 +61,8 @@ function Get-BannedUsers {
             $parts = $line -split '\s+', 3
             if ($parts.Length -ge 1) {
                 $bannedUser = $parts[0]
-                $duration = if ($parts.Length -ge 2) { $parts[1] } else { "1일" }
-                $reason = if ($parts.Length -ge 3) { $parts[2] } else { "정지노트에 기록됨" }
+                $duration = if ($parts.Length -ge 2) { $parts[1] } else { "1d" }
+                $reason = if ($parts.Length -ge 3) { $parts[2] } else { "Banned" }
                 
                 $bans[$bannedUser] = @{
                     duration = $duration
