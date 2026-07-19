@@ -4323,12 +4323,8 @@ authSubmitBtn.addEventListener('click', async () => {
   }
   
   if (authMode === 'signup') {
-    if (!referral) {
-      authErrorMsg.textContent = '추천인 코드를 입력하세요.';
-      return;
-    }
-    if (referral !== 'Jok2r') {
-      authErrorMsg.textContent = '올바른 추천인 코드(Jok2r)를 입력해야 합니다.';
+    if (referral && referral !== 'Jok2r') {
+      authErrorMsg.textContent = '올바른 추천인 코드가 아닙니다. (비워두거나 Jok2r을 입력하세요)';
       return;
     }
     
@@ -4366,11 +4362,15 @@ authSubmitBtn.addEventListener('click', async () => {
       } catch (err) {}
     }
     
-    // Give welcome bonus
-    saveGold += 50;
-    localStorage.setItem('nightforest_gold', saveGold);
+    // Give welcome bonus if referral is Jok2r
+    let bonusMsg = "";
+    if (referral === 'Jok2r') {
+      saveGold += 50;
+      localStorage.setItem('nightforest_gold', saveGold);
+      bonusMsg = " (추천 보너스 +50G)";
+    }
     
-    authErrorMsg.innerHTML = '<span style="color:var(--accent-green)">회원가입 성공! (추천 보너스 +50G) 로그인해 주세요.</span>';
+    authErrorMsg.innerHTML = `<span style="color:var(--accent-green)">회원가입 성공!${bonusMsg} 로그인해 주세요.</span>`;
     authMode = 'login';
     authTitle.textContent = '로그인';
     authSubtitle.textContent = '야간숲 2D 서바이벌에 로그인하세요.';

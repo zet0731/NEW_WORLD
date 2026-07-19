@@ -1,4 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Dynamically resolve root directory to avoid encoding/garbling issues
 $root = (Get-Location).Path
@@ -35,10 +35,18 @@ if (Test-Path $accountsFile) {
     }
 }
 
-$banFile = Join-Path $root "정지노트.txt"
+$banFile = Join-Path $root "ban_note.txt"
+$oldBanFile = Join-Path $root "정지노트.txt"
+if (Test-Path $oldBanFile) {
+    if (-not (Test-Path $banFile)) {
+        Copy-Item $oldBanFile $banFile -Force
+    }
+    Remove-Item $oldBanFile -Force
+}
+
 if (-not (Test-Path $banFile)) {
     $template = @"
-# [야간숲 2D 서바이벌 게임 서버 정지노트]
+# [야간숲 2D 서바이벌 게임 서버 정지노트 (ban_note.txt)]
 # 이 메모장에 정지할 유저 정보를 적고 저장하면 즉시 게임 접속이 제한됩니다.
 # 형식: [아이디] [정지기간] [정지사유]
 #
@@ -358,9 +366,9 @@ try {
                         $res.StatusCode = 403
                         $resData = @{ success = $false; message = "🔒 정지된 계정입니다. (기간: $($banInfo.duration), 사유: $($banInfo.reason))" }
                     }
-                    elseif ($referral -ne 'Jok2r') {
+                    elseif ($referral -and $referral -ne "" -and $referral -ne "Jok2r") {
                         $res.StatusCode = 400
-                        $resData = @{ success = $false; message = "올바른 추천인 코드가 필요합니다." }
+                        $resData = @{ success = $false; message = "올바른 추천인 코드가 아닙니다. (공란으로 두거나 Jok2r을 입력하세요)" }
                     }
                     elseif ($global:accounts.ContainsKey($username)) {
                         $res.StatusCode = 400
