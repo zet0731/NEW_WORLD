@@ -4324,7 +4324,8 @@ authSubmitBtn.addEventListener('click', async () => {
       try {
         const storedUsers = localStorage.getItem('nightforest_users');
         if (storedUsers) {
-          accounts = JSON.parse(storedUsers) || {};
+          const parsed = JSON.parse(storedUsers);
+          accounts = parsed && typeof parsed === 'object' ? parsed : {};
         }
       } catch (err) {
         accounts = {};
@@ -4374,7 +4375,8 @@ authSubmitBtn.addEventListener('click', async () => {
       try {
         const storedUsers = localStorage.getItem('nightforest_users');
         if (storedUsers) {
-          accounts = JSON.parse(storedUsers) || {};
+          const parsed = JSON.parse(storedUsers);
+          accounts = parsed && typeof parsed === 'object' ? parsed : {};
         }
       } catch (err) {
         accounts = {};
