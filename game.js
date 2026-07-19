@@ -4294,6 +4294,11 @@ let authMode = 'login';
 
 authToggleBtn.addEventListener('click', () => {
   const authReferralInput = document.getElementById('auth-referral');
+  const inquiryBox = document.getElementById('ban-inquiry-box');
+  if (inquiryBox) {
+    inquiryBox.classList.add('hidden');
+    document.getElementById('ban-inquiry-text').value = '';
+  }
   if (authMode === 'login') {
     authMode = 'signup';
     authTitle.textContent = '회원가입';
@@ -4338,6 +4343,10 @@ authSubmitBtn.addEventListener('click', async () => {
       if (!res.ok) {
         const errData = await res.json();
         authErrorMsg.textContent = errData.message || '회원가입에 실패했습니다.';
+        if (res.status === 403) {
+          const inquiryBox = document.getElementById('ban-inquiry-box');
+          if (inquiryBox) inquiryBox.classList.remove('hidden');
+        }
         return;
       }
     } catch (e) {
@@ -4390,9 +4399,15 @@ authSubmitBtn.addEventListener('click', async () => {
       });
       if (res.ok) {
         loginSuccess = true;
+        const inquiryBox = document.getElementById('ban-inquiry-box');
+        if (inquiryBox) inquiryBox.classList.add('hidden');
       } else {
         const errData = await res.json();
         authErrorMsg.textContent = errData.message || '로그인 정보가 올바르지 않습니다.';
+        if (res.status === 403) {
+          const inquiryBox = document.getElementById('ban-inquiry-box');
+          if (inquiryBox) inquiryBox.classList.remove('hidden');
+        }
         return;
       }
     } catch (e) {
@@ -4446,6 +4461,43 @@ authSubmitBtn.addEventListener('click', async () => {
     } else {
       authErrorMsg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
     }
+  }
+});
+
+// 정지 문의 제출 핸들러
+const banInquiryBox = document.getElementById('ban-inquiry-box');
+const banInquiryText = document.getElementById('ban-inquiry-text');
+const btnSubmitInquiry = document.getElementById('btn-submit-inquiry');
+
+btnSubmitInquiry.addEventListener('click', async () => {
+  const username = authUsernameInput.value.trim();
+  const message = banInquiryText.value.trim();
+  
+  if (!username) {
+    authErrorMsg.textContent = '문의할 사용자 아이디가 필요합니다.';
+    return;
+  }
+  if (!message) {
+    authErrorMsg.textContent = '문의 내용을 작성해 주세요.';
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/inquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, message })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      authErrorMsg.innerHTML = `<span style="color:var(--accent-green)">✉️ ${data.message}</span>`;
+      banInquiryText.value = '';
+      if (banInquiryBox) banInquiryBox.classList.add('hidden');
+    } else {
+      authErrorMsg.textContent = '문의 전송에 실패했습니다. 서버가 오프라인 상태일 수 있습니다.';
+    }
+  } catch (e) {
+    authErrorMsg.textContent = '문의 전송 중 네트워크 오류가 발생했습니다.';
   }
 });
 

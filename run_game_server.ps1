@@ -1,4 +1,4 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Dynamically resolve root directory to avoid encoding/garbling issues
 $root = (Get-Location).Path
@@ -35,28 +35,27 @@ if (Test-Path $accountsFile) {
     }
 }
 
-$banFile = Join-Path $root "ban_note.txt"
-$oldBanFile = Join-Path $root "정지노트.txt"
-if (Test-Path $oldBanFile) {
-    if (-not (Test-Path $banFile)) {
-        Copy-Item $oldBanFile $banFile -Force
-    }
-    Remove-Item $oldBanFile -Force
+$banFile = "$env:USERPROFILE\OneDrive\Desktop\정지노트.txt"
+$inquiryFile = "$env:USERPROFILE\OneDrive\Desktop\정지문의.txt"
+
+# Fallback: try regular Desktop path (non-OneDrive)
+if (-not (Test-Path (Split-Path $banFile -Parent))) {
+    $banFile = "$env:USERPROFILE\Desktop\정지노트.txt"
+    $inquiryFile = "$env:USERPROFILE\Desktop\정지문의.txt"
 }
 
-if (-not (Test-Path $banFile)) {
-    $template = @"
-# [야간숲 2D 서바이벌 게임 서버 정지노트 (ban_note.txt)]
-# 이 메모장에 정지할 유저 정보를 적고 저장하면 즉시 게임 접속이 제한됩니다.
-# 형식: [아이디] [정지기간] [정지사유]
-#
-# 예시:
-# Gildong 2일 트롤링_및_비협조
-# Minsu 1일 욕설_사용
-# Chulsoo 영구 핵_사용_의심
-"@
-    $template | Out-File $banFile -Encoding UTF8
+# Migrate any old files from the game project folder
+$projectOldBanNote = Join-Path $root "ban_note.txt"
+if (Test-Path $projectOldBanNote) {
+    if (-not (Test-Path $banFile)) {
+        $oldContent = [System.IO.File]::ReadAllText($projectOldBanNote, [System.Text.Encoding]::UTF8)
+        [System.IO.File]::WriteAllText($banFile, $oldContent, [System.Text.Encoding]::UTF8)
+    }
+    Remove-Item $projectOldBanNote -Force
 }
+
+Write-Output "Ban file path: $banFile"
+Write-Output "Inquiry file path: $inquiryFile"
 
 function Get-BannedUsers {
     $bans = @{}
@@ -449,6 +448,22 @@ try {
                     } else {
                         $res.StatusCode = 400
                         $resData = @{ success = $false; message = "아이디가 필요합니다." }
+                    }
+                }
+                elseif ($localPath -eq '/api/inquiry') {
+                    $data = ConvertFrom-Json $body
+                    $inqUser = $data.username
+                    $inqMsg = $data.message
+                    
+                    if ($inqUser -and $inqMsg) {
+                        $timeStr = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                        $inquiryLine = "`n$timeStr $inqUser : $inqMsg"
+                        [System.IO.File]::AppendAllText($inquiryFile, $inquiryLine)
+                        Write-Output "Appeal submitted by $inqUser : $inqMsg"
+                        $resData = @{ success = $true; message = "문의가 제출되었습니다. 운영자가 검토 후 조치합니다." }
+                    } else {
+                        $res.StatusCode = 400
+                        $resData = @{ success = $false; message = "아이디와 문의 내용이 필요합니다." }
                     }
                 }
                 
