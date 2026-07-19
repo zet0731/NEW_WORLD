@@ -47,6 +47,13 @@ if (Test-Path $pidFile) {
     Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
 
+# --- Local IP Detection ---
+$localIp = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias 'Wi-Fi' -ErrorAction SilentlyContinue | Select-Object -First 1).IPAddress
+if (-not $localIp) {
+    $localIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } | Select-Object -First 1).IPAddress
+}
+if (-not $localIp) { $localIp = "127.0.0.1" }
+
 # --- Tunnel Provider Setup ---
 $provider = "localhost.run"
 $sshArgs = @("-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=NUL", "-R", "80:127.0.0.1:8787", "nokey@localhost.run")
@@ -71,8 +78,15 @@ while ($elapsed -lt $timeoutSeconds -and -not $urlFound) {
                     $url = $Matches[1]
                 }
                 Write-Output "`n=================================================="
-                Write-Output " [공유 주소] 휴대폰으로 아래 링크에 접속하세요!"
-                Write-Output " $url"
+                Write-Output "  🌲 야간숲 2D 서바이벌 게임 서버 구동 완료 🌲"
+                Write-Output "=================================================="
+                Write-Output " [접속 방법 1] 외부 데이터(LTE/5G) 접속용 링크:"
+                Write-Output "  $url"
+                Write-Output "  (⚠️ 주의: 서버를 껐다 켤 때마다 주소가 새로 바뀝니다!)"
+                Write-Output "--------------------------------------------------"
+                Write-Output " [접속 방법 2] 같은 집 와이파이(Wi-Fi) 직접 접속용 링크:"
+                Write-Output "  http://$localIp:8787"
+                Write-Output "  (인터넷 차단/오류 우회, 가장 빠른 다이렉트 접속)"
                 Write-Output "==================================================`n"
                 $urlFound = $true
                 break
@@ -110,8 +124,15 @@ if (-not $urlFound) {
                         $url = $Matches[1]
                     }
                     Write-Output "`n=================================================="
-                    Write-Output " [공유 주소] 휴대폰으로 아래 링크에 접속하세요!"
-                    Write-Output " $url"
+                    Write-Output "  🌲 야간숲 2D 서바이벌 게임 서버 구동 완료 🌲"
+                    Write-Output "=================================================="
+                    Write-Output " [접속 방법 1] 외부 데이터(LTE/5G) 접속용 링크:"
+                    Write-Output "  $url"
+                    Write-Output "  (⚠️ 주의: 서버를 껐다 켤 때마다 주소가 새로 바뀝니다!)"
+                    Write-Output "--------------------------------------------------"
+                    Write-Output " [접속 방법 2] 같은 집 와이파이(Wi-Fi) 직접 접속용 링크:"
+                    Write-Output "  http://$localIp:8787"
+                    Write-Output "  (인터넷 차단/오류 우회, 가장 빠른 다이렉트 접속)"
                     Write-Output "==================================================`n"
                     $urlFound = $true
                     break
