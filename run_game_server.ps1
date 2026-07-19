@@ -22,9 +22,14 @@ $accountsFile = Join-Path $root "accounts.json"
 if (Test-Path $accountsFile) {
     try {
         $content = Get-Content $accountsFile -Raw -Encoding UTF8
-        $global:accounts = ConvertFrom-Json $content
-        if ($global:accounts -eq $null) { $global:accounts = @{} }
-        Write-Output "Loaded registered accounts from accounts.json."
+        $obj = ConvertFrom-Json $content
+        $global:accounts = @{}
+        if ($obj) {
+            foreach ($prop in $obj.psobject.Properties) {
+                $global:accounts[$prop.Name] = $prop.Value
+            }
+        }
+        Write-Output "Loaded registered accounts from accounts.json as a hashtable."
     } catch {
         $global:accounts = @{}
     }
