@@ -1431,3 +1431,42 @@ canvas {
   color: var(--text-muted);
 }
 
+/* 찬란한 개발자(Jok2r) 전용 특별 스타일 */
+.dev-name-shining {
+  font-weight: 900 !important;
+  font-size: 1.1rem;
+  background: linear-gradient(90deg, #ff007f, #ff00ff, #7f00ff, #00ffff, #00ff00, #ffff00, #ff7f00, #ff007f);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shineRainbow 3s linear infinite;
+  text-shadow: 0 0 12px rgba(255, 0, 255, 0.4);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes shineRainbow {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+.dev-checkmark-glow {
+  display: inline-block;
+  font-weight: 900 !important;
+  vertical-align: middle;
+  animation: blinkCheckmark 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes blinkCheckmark {
+  0% {
+    color: #ff00ff;
+    text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff;
+    transform: scale(1.0);
+  }
+  100% {
+    color: #00ffff;
+    text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff, 0 0 45px #00ffff;
+    transform: scale(1.2);
+  }
+}
+

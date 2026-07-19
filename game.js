@@ -1758,8 +1758,9 @@ function renderLobby() {
       const jobObj = JOB_DATA[member.job];
       
       let displayName = member.name;
-      if (isPlayer && isDeveloper) {
-        displayName = loggedInUser + ' <span style="color:#00ffff;">✔️</span>';
+      const cleanMemberName = member.name.replace(" ✔️", "").replace(" (나)", "").replace(" (친구/가족)", "").replace(" (AI)", "");
+      if (cleanMemberName === 'Jok2r') {
+        displayName = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span>`;
       }
 
       let dropdownHtml = `<select class="job-select-dropdown" data-index="${i}">`;
@@ -1867,10 +1868,16 @@ function renderLobby() {
     const activeUserName = loggedInUser || "플레이어";
     const myCard = document.createElement('div');
     myCard.className = 'online-user-card';
+    
+    let activeNameHtml = activeUserName + ' (나)';
+    if (activeUserName === 'Jok2r') {
+      activeNameHtml = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span> (나)`;
+    }
+    
     myCard.innerHTML = `
       <div class="online-user-status-dot online"></div>
       <div class="online-user-details">
-        <span class="online-user-name">${activeUserName} (나)</span>
+        <span class="online-user-name">${activeNameHtml}</span>
         <span class="online-user-status-text">대기실 대기 중</span>
       </div>
     `;
@@ -1927,10 +1934,16 @@ function renderLobby() {
     displayList.forEach(u => {
       const uCard = document.createElement('div');
       uCard.className = 'online-user-card';
+      
+      let nameHtml = u.name;
+      if (u.name === 'Jok2r') {
+        nameHtml = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span>`;
+      }
+      
       uCard.innerHTML = `
         <div class="online-user-status-dot ${u.status}"></div>
         <div class="online-user-details">
-          <span class="online-user-name">${u.name}</span>
+          <span class="online-user-name">${nameHtml}</span>
           <span class="online-user-status-text">${u.text}</span>
         </div>
       `;
@@ -4262,7 +4275,11 @@ authSubmitBtn.addEventListener('click', async () => {
       isDeveloper = (username === 'Jok2r');
       
       const nameSpan = document.getElementById('user-display-name');
-      nameSpan.innerHTML = loggedInUser + (isDeveloper ? ' <span style="color:#00ffff; font-weight:800; text-shadow:0 0 10px rgba(0,255,255,0.6);">✔️</span>' : '');
+      if (isDeveloper) {
+        nameSpan.innerHTML = `<span class="dev-name-shining">${loggedInUser}</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span>`;
+      } else {
+        nameSpan.innerHTML = loggedInUser;
+      }
       
       lobbyParty[0].name = loggedInUser + (isDeveloper ? ' ✔️' : '');
       
@@ -4339,10 +4356,18 @@ async function syncLobbyState() {
             actionBtn = `<button class="btn btn-accent btn-sm btn-join-friend-party" data-username="${u.username}" style="margin-left: auto; padding: 4px 8px;">참가</button>`;
           }
           
+          let nameHtml = u.username;
+          if (u.username === 'Jok2r') {
+            nameHtml = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span>`;
+          }
+          if (isMe) {
+            nameHtml += ' (나)';
+          }
+          
           uCard.innerHTML = `
             <div class="online-user-status-dot online"></div>
             <div class="online-user-details">
-              <span class="online-user-name">${u.username} ${isMe ? '(나)' : ''}</span>
+              <span class="online-user-name">${nameHtml}</span>
               <span class="online-user-status-text">${u.status}</span>
             </div>
             ${actionBtn}
@@ -4421,8 +4446,9 @@ function renderLobbyOnly() {
       const jobObj = JOB_DATA[member.job];
       
       let displayName = member.name;
-      if (isPlayer && isDeveloper) {
-        displayName = loggedInUser + ' <span style="color:#00ffff;">✔️</span>';
+      const cleanMemberName = member.name.replace(" ✔️", "").replace(" (나)", "").replace(" (친구/가족)", "").replace(" (AI)", "");
+      if (cleanMemberName === 'Jok2r') {
+        displayName = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span>`;
       }
 
       let dropdownHtml = `<select class="job-select-dropdown" data-index="${i}">`;
@@ -4524,10 +4550,16 @@ function renderLobbyLocal() {
     const activeUserName = loggedInUser || "플레이어";
     const myCard = document.createElement('div');
     myCard.className = 'online-user-card';
+    
+    let activeNameHtml = activeUserName + ' (나)';
+    if (activeUserName === 'Jok2r') {
+      activeNameHtml = `<span class="dev-name-shining">Jok2r</span> <span class="dev-checkmark-glow" style="margin-left:4px;">✔️</span> (나)`;
+    }
+    
     myCard.innerHTML = `
       <div class="online-user-status-dot online"></div>
       <div class="online-user-details">
-        <span class="online-user-name">${activeUserName} (나)</span>
+        <span class="online-user-name">${activeNameHtml}</span>
         <span class="online-user-status-text">대기실 대기 중 [로컬 모드]</span>
       </div>
     `;
