@@ -1,4 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Dynamically resolve root directory to avoid encoding/garbling issues
 $root = (Get-Location).Path
@@ -362,6 +362,24 @@ try {
                         if ($p.username -ne $username) { $newParty += $p }
                     }
                     $global:party = $newParty
+                }
+                elseif ($localPath -eq '/api/party/kick') {
+                    $data = ConvertFrom-Json $body
+                    $requester = $data.requester
+                    $target = $data.target
+                    
+                    # Only Jok2r can kick
+                    if ($requester -eq 'Jok2r') {
+                        $newParty = @()
+                        foreach ($p in $global:party) {
+                            if ($p.username -ne $target) { $newParty += $p }
+                        }
+                        $global:party = $newParty
+                        $resData = @{ success = $true; message = "$target 님이 파티에서 추방되었습니다." }
+                    } else {
+                        $res.StatusCode = 403
+                        $resData = @{ success = $false; message = "권한이 없습니다." }
+                    }
                 }
                 elseif ($localPath -eq '/api/register') {
                     $data = ConvertFrom-Json $body

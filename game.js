@@ -2211,13 +2211,34 @@ document.getElementById('btn-start').addEventListener('click', () => {
   }
   
   gameState = 'PLAYING';
+  updateHUD();
+});
+
+// 이어하기 버튼
+document.getElementById('btn-continue').addEventListener('click', () => {
+  soundCtrl.init();
+  startScreen.classList.add('hidden');
+  initGame(true); // true = load save
+  
+  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (isTouch) {
+    document.getElementById('mobile-controls-overlay').classList.remove('hidden');
+  } else {
+    document.getElementById('mobile-controls-overlay').classList.add('hidden');
+  }
+  
+  gameState = 'PLAYING';
+  updateHUD();
+  showToast(`💾 ${dayCount}일차 저장 데이터에서 이어하기 시작!`);
 });
 
 document.getElementById('btn-restart').addEventListener('click', () => {
   gameoverScreen.classList.add('hidden');
+  deleteSaveState(); // 새로 시작은 저장 데이터 삭제
   startScreen.classList.remove('hidden');
   gameState = 'START';
   renderLobby();
+  updateContinueButton();
 });
 
 document.getElementById('btn-close-crafting').addEventListener('click', () => {
@@ -2927,7 +2948,7 @@ function spawnChopParticles(x, y, color) {
 }
 
 // --- 게임 초기화 ---
-function initGame() {
+function initGame(continueFromSave = false) {
   const playerLobbyConfig = lobbyParty.find(p => p.type === 'player');
   player.job = playerLobbyConfig ? playerLobbyConfig.job : 'LUMBERJACK';
   
@@ -2970,6 +2991,11 @@ function initGame() {
   dayCount = 1;
   goldEarnedThisGame = 0;
   screenShake = 0;
+
+  // 저장 데이터 불러오기
+  if (continueFromSave) {
+    loadGameState();
+  }
 
   torches.length = 0;
   particles.length = 0;
@@ -3063,8 +3089,84 @@ function handleDayNightCycle(dt) {
   }
 }
 
+function saveGameState() {
+  if (!loggedInUser) return;
+  const saveKey = 'nightforest_save_' + loggedInUser;
+  const saveData = {
+    dayCount: dayCount,
+    dayTime: dayTime,
+    gold: saveGold,
+    hp: player.hp,
+    maxHp: player.maxHp,
+    wood: player.wood,
+    axeLevel: player.axeLevel,
+    hasBoots: player.hasBoots,
+    torchCount: player.torchCount,
+    potionCount: player.potionCount,
+    pistolAmmo: player.pistolAmmo,
+    rifleAmmo: player.rifleAmmo,
+    mushroomCount: player.mushroomCount,
+    ancientSpiceCount: player.ancientSpiceCount,
+    campfireLevel: campfire.level,
+    campfireWood: campfire.woodContributed,
+    campfireWoodNeeded: campfire.woodNeeded,
+    job: player.job,
+    savedAt: Date.now()
+  };
+  localStorage.setItem(saveKey, JSON.stringify(saveData));
+}
+
+function loadGameState() {
+  if (!loggedInUser) return false;
+  const saveKey = 'nightforest_save_' + loggedInUser;
+  try {
+    const raw = localStorage.getItem(saveKey);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || !s.dayCount) return false;
+    
+    dayCount = s.dayCount || 1;
+    dayTime = s.dayTime || 20;
+    saveGold = s.gold || 0;
+    player.hp = s.hp || player.maxHp;
+    player.maxHp = s.maxHp || 150;
+    player.wood = s.wood || 0;
+    player.axeLevel = s.axeLevel || 1;
+    player.hasBoots = s.hasBoots || false;
+    player.torchCount = s.torchCount || 0;
+    player.potionCount = s.potionCount || 0;
+    player.pistolAmmo = s.pistolAmmo !== undefined ? s.pistolAmmo : 30;
+    player.rifleAmmo = s.rifleAmmo !== undefined ? s.rifleAmmo : 15;
+    player.mushroomCount = s.mushroomCount || 0;
+    player.ancientSpiceCount = s.ancientSpiceCount || 0;
+    campfire.level = s.campfireLevel || 1;
+    campfire.woodContributed = s.campfireWood || 0;
+    campfire.woodNeeded = s.campfireWoodNeeded || 15;
+    campfire.lightRadius = 260 + (campfire.level - 1) * 40;
+    
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function deleteSaveState() {
+  if (!loggedInUser) return;
+  localStorage.removeItem('nightforest_save_' + loggedInUser);
+}
+
+function hasSaveState() {
+  if (!loggedInUser) return false;
+  const raw = localStorage.getItem('nightforest_save_' + loggedInUser);
+  if (!raw) return false;
+  try { return !!(JSON.parse(raw)?.dayCount); } catch(e) { return false; }
+}
+
 function endGame() {
   gameState = 'GAMEOVER';
+  
+  // 자동 저장 (사망 직전 상태)
+  saveGameState();
   
   document.getElementById('summary-days').textContent = dayCount;
   document.getElementById('summary-gold').textContent = goldEarnedThisGame;
