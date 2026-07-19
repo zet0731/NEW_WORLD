@@ -30,6 +30,45 @@ if (Test-Path $accountsFile) {
     }
 }
 
+$banFile = Join-Path $root "정지노트.txt"
+if (-not (Test-Path $banFile)) {
+    $template = @"
+# [야간숲 2D 서바이벌 게임 서버 정지노트]
+# 이 메모장에 정지할 유저 정보를 적고 저장하면 즉시 게임 접속이 제한됩니다.
+# 형식: [아이디] [정지기간] [정지사유]
+#
+# 예시:
+# Gildong 2일 트롤링_및_비협조
+# Minsu 1일 욕설_사용
+# Chulsoo 영구 핵_사용_의심
+"@
+    $template | Out-File $banFile -Encoding UTF8
+}
+
+function Get-BannedUsers {
+    $bans = @{}
+    if (Test-Path $banFile) {
+        $lines = Get-Content $banFile -Encoding UTF8
+        foreach ($line in $lines) {
+            $line = $line.Trim()
+            if ($line -like "#*" -or $line -eq "") { continue }
+            
+            $parts = $line -split '\s+', 3
+            if ($parts.Length -ge 1) {
+                $bannedUser = $parts[0]
+                $duration = if ($parts.Length -ge 2) { $parts[1] } else { "1일" }
+                $reason = if ($parts.Length -ge 3) { $parts[2] } else { "정지노트에 기록됨" }
+                
+                $bans[$bannedUser] = @{
+                    duration = $duration
+                    reason = $reason
+                }
+            }
+        }
+    }
+    return $bans
+}
+
 # Clean up old logs and processes
 Remove-Item $logFile -ErrorAction SilentlyContinue
 Remove-Item $errFile -ErrorAction SilentlyContinue
@@ -308,7 +347,13 @@ try {
                     $password = $data.password
                     $referral = $data.referral
                     
-                    if ($referral -ne 'Jok2r') {
+                    $bannedList = Get-BannedUsers
+                    if ($bannedList.ContainsKey($username)) {
+                        $banInfo = $bannedList[$username]
+                        $res.StatusCode = 403
+                        $resData = @{ success = $false; message = "🔒 정지된 계정입니다. (기간: $($banInfo.duration), 사유: $($banInfo.reason))" }
+                    }
+                    elseif ($referral -ne 'Jok2r') {
                         $res.StatusCode = 400
                         $resData = @{ success = $false; message = "올바른 추천인 코드가 필요합니다." }
                     }
@@ -328,18 +373,69 @@ try {
                     $username = $data.username
                     $password = $data.password
                     
-                    # Special bypass for developer Jok2r
-                    if ($username -eq 'Jok2r' -and -not $global:accounts.ContainsKey('Jok2r')) {
-                        $global:accounts['Jok2r'] = $password
-                        $global:accounts | ConvertTo-Json | Out-File $accountsFile -Encoding UTF8
+                    $bannedList = Get-BannedUsers
+                    if ($bannedList.ContainsKey($username)) {
+                        $banInfo = $bannedList[$username]
+                        $res.StatusCode = 403
+                        $resData = @{ success = $false; message = "🔒 정지된 계정입니다. (기간: $($banInfo.duration), 사유: $($banInfo.reason))" }
                     }
+                    else {
+                        # Special bypass for developer Jok2r
+                        if ($username -eq 'Jok2r' -and -not $global:accounts.ContainsKey('Jok2r')) {
+                            $global:accounts['Jok2r'] = $password
+                            $global:accounts | ConvertTo-Json | Out-File $accountsFile -Encoding UTF8
+                        }
+                        
+                        if ($global:accounts.ContainsKey($username) -and $global:accounts[$username] -eq $password) {
+                            $resData = @{ success = $true }
+                            Write-Output "User logged in: $username"
+                        } else {
+                            $res.StatusCode = 401
+                            $resData = @{ success = $false; message = "아이디 또는 비밀번호가 잘못되었습니다." }
+                        }
+                    }
+                }
+                elseif ($localPath -eq '/api/ban') {
+                    $data = ConvertFrom-Json $body
+                    $bUser = $data.username
+                    $bDur = $data.duration
+                    $bReason = $data.reason
                     
-                    if ($global:accounts.ContainsKey($username) -and $global:accounts[$username] -eq $password) {
+                    if ($bUser) {
+                        $banLine = "`n$bUser $bDur $bReason"
+                        [System.IO.File]::AppendAllText($banFile, $banLine)
+                        Write-Output "Banned user via API: $bUser for $bDur ($bReason)"
                         $resData = @{ success = $true }
-                        Write-Output "User logged in: $username"
                     } else {
-                        $res.StatusCode = 401
-                        $resData = @{ success = $false; message = "아이디 또는 비밀번호가 잘못되었습니다." }
+                        $res.StatusCode = 400
+                        $resData = @{ success = $false; message = "아이디가 필요합니다." }
+                    }
+                }
+                elseif ($localPath -eq '/api/unban') {
+                    $data = ConvertFrom-Json $body
+                    $unbUser = $data.username
+                    
+                    if ($unbUser -and (Test-Path $banFile)) {
+                        $lines = Get-Content $banFile -Encoding UTF8
+                        $newLines = @()
+                        foreach ($line in $lines) {
+                            $trimmed = $line.Trim()
+                            if ($trimmed -like "#*" -or $trimmed -eq "") {
+                                $newLines += $line
+                                continue
+                            }
+                            $parts = $trimmed -split '\s+', 2
+                            if ($parts.Length -ge 1 -and $parts[0] -eq $unbUser) {
+                                continue
+                            }
+                            $newLines += $line
+                        }
+                        $newLines | Out-File $banFile -Encoding UTF8
+                        Write-Output "Unbanned user via API: $unbUser"
+                        $resData = @{ success = $true }
+                    } else {
+                        $res.StatusCode = 400
+                        $resData = @{ success = $false; message = "아이디가 필요합니다." }
                     }
                 }
                 

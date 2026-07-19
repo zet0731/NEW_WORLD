@@ -2613,8 +2613,50 @@ window.addEventListener('keydown', (e) => {
             localStorage.setItem('nightforest_unlocked_jobs', JSON.stringify(unlockedJobs));
             renderLobby();
             showToast('🛠️ [Dev 치트] 모든 직업이 즉시 해금되었습니다!');
+          } else if (cmd === '/ban') {
+            const target = parts[1];
+            const duration = parts[2] || '1일';
+            const reason = parts.slice(3).join(' ') || '사유 미작성';
+            if (!target) {
+              showToast('❌ 사용법: /ban [아이디] [기간] [사유]');
+            } else {
+              try {
+                const res = await fetch('/api/ban', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: target, duration, reason })
+                });
+                if (res.ok) {
+                  showToast(`🔨 [정지 완료] ${target} 유저를 ${duration} 동안 정지시켰습니다. (사유: ${reason})`);
+                } else {
+                  showToast('❌ 정지 처리에 실패했습니다.');
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          } else if (cmd === '/unban') {
+            const target = parts[1];
+            if (!target) {
+              showToast('❌ 사용법: /unban [아이디]');
+            } else {
+              try {
+                const res = await fetch('/api/unban', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: target })
+                });
+                if (res.ok) {
+                  showToast(`🔓 [정지 해제] ${target} 유저의 정지를 해제했습니다.`);
+                } else {
+                  showToast('❌ 정지 해제에 실패했습니다.');
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
           } else {
-            showToast('❌ 명령어 안내: /gold [수량], /wood [수량], /heal, /clear, /god, /speed [배율], /spawn [WOLF/BEAR/BOSS/TREE] [수량], /time [day/night], /ammo [수량], /unlockjobs');
+            showToast('❌ 명령어 안내: /gold [수량], /wood [수량], /heal, /clear, /god, /speed [배율], /spawn [몹/나무] [수량], /time [day/night], /ammo [수량], /unlockjobs, /ban [아이디] [기간] [사유], /unban [아이디]');
           }
         } else {
           player.chatText = chatVal;
