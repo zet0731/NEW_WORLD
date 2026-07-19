@@ -4082,9 +4082,40 @@ function drawPlayer() {
   
   let displayName = loggedInUser || "플레이어";
   if (isDeveloper) {
-    displayName += " ✔️";
+    const hue = (Date.now() / 6) % 360;
+    const nameStr = displayName;
+    const checkStr = " ✔️";
+    
+    ctx.save();
+    ctx.font = 'bold 12px sans-serif';
+    
+    const nameWidth = ctx.measureText(nameStr).width;
+    const checkWidth = ctx.measureText(checkStr).width;
+    const totalWidth = nameWidth + checkWidth;
+    
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.textAlign = 'center';
+    
+    // Draw Name
+    ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(nameStr, px - totalWidth/2 + nameWidth/2, py - 26);
+    ctx.fillText(nameStr, px - totalWidth/2 + nameWidth/2, py - 26);
+    
+    // Draw Checkmark
+    const checkHue = (Date.now() / 4) % 360;
+    ctx.fillStyle = `hsl(${checkHue}, 100%, 55%)`;
+    ctx.shadowColor = `hsl(${checkHue}, 100%, 55%)`;
+    ctx.shadowBlur = 12;
+    ctx.strokeText(checkStr, px - totalWidth/2 + nameWidth + checkWidth/2, py - 26);
+    ctx.fillText(checkStr, px - totalWidth/2 + nameWidth + checkWidth/2, py - 26);
+    
+    ctx.restore();
+  } else {
+    ctx.fillText(displayName, px, py - 26);
   }
-  ctx.fillText(displayName, px, py - 26);
   ctx.shadowBlur = 0;
 
   if (player.chatText) {
