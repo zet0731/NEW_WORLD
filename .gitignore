@@ -5,6 +5,7 @@ accounts.json
 *.log
 *.err
 *.tmp
+logs/
 
 # OS files
 .DS_Store
